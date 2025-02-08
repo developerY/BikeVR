@@ -62,7 +62,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BikeTheme {
-                // Optional: A full-screen gradient background.
                 Box(modifier = Modifier.fillMaxSize()) {
                     BrushBackground()
                     val session = LocalSession.current
@@ -104,18 +103,29 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             .resizable()
             .movable()
     ) {
-        // Use a Card to add elevation and rounded corners
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Main content at the center
                 MainContent(
                     modifier = Modifier
-                        .align(Alignment.Center)
+                        .weight(1f)
+                        .fillMaxWidth()
                         .padding(48.dp)
                 )
+                // Bike info panel at the bottom
+                BikeInfoPanel(
+                    speed = 25.3,
+                    distance = 12.8,
+                    cadence = 90.0,
+                    heartRate = 135
+                )
+                // Orbiter for mode switching, if needed
                 Orbiter(
                     position = OrbiterEdge.Top,
                     offset = EdgeOffset.inner(offset = 20.dp),
@@ -139,22 +149,19 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
-            ) {
-                MainContent(modifier = Modifier.padding(48.dp))
-            }
+            MainContent(modifier = Modifier.padding(48.dp))
+            BikeInfoPanel(
+                speed = 25.3,
+                distance = 12.8,
+                cadence = 90.0,
+                heartRate = 135
+            )
             if (LocalHasXrSpatialFeature.current) {
                 FullSpaceModeIconButton(
                     onClick = onRequestFullSpaceMode,
@@ -167,13 +174,62 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
 
 @Composable
 fun MainContent(modifier: Modifier = Modifier) {
-    // Display your main text using headline typography
     Text(
         text = stringResource(R.string.hello_android_xr),
         style = MaterialTheme.typography.headlineMedium,
         modifier = modifier,
         color = MaterialTheme.colorScheme.onBackground
     )
+}
+
+@Composable
+fun BikeInfoPanel(
+    speed: Double,
+    distance: Double,
+    cadence: Double,
+    heartRate: Int
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Bike Info",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BikeMetric(name = "Speed", value = "${String.format("%.1f", speed)} km/h")
+                BikeMetric(name = "Distance", value = "${String.format("%.1f", distance)} km")
+                BikeMetric(name = "Cadence", value = "${cadence.toInt()} rpm")
+                BikeMetric(name = "Heart Rate", value = "$heartRate bpm")
+            }
+        }
+    }
+}
+
+@Composable
+fun BikeMetric(name: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }
 
 @Composable
