@@ -15,6 +15,11 @@ ui = "1.8.0-beta01"
 compose = "1.0.0-alpha01"
 runtimeVersion = "1.0.0-alpha01"
 scenecore = "1.0.0-alpha01"
+filament = "1.56.8"
+media3Transformer = "1.5.1"
+filamentAndroid = "1.17.1"  # Replace with the latest Filament version
+xr = "1.0.0"  # Use the appropriate version for your XR SDK components
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +42,14 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-compose = { group = "androidx.xr.compose", name = "compose", version.ref = "compose" }
 runtime = { group = "androidx.xr.runtime", name = "runtime", version.ref = "runtimeVersion" }
 androidx-scenecore = { group = "androidx.xr.scenecore", name = "scenecore", version.ref = "scenecore" }
+
+filament-android = { group = 'com.google.android.filament', name = 'filament-android', version.ref = 'filament'}
+gltfio-android = { group = "com.google.android.filament", name = "gltfio-android", version.ref = "filament" }
+androidx-media3-transformer = { group = "androidx.media3", name = "media3-transformer", version.ref = "media3Transformer" }
+sceneform-filament-android = { group = "com.google.ar.sceneform", name = "filament-android", version.ref = "filamentAndroid" }
+jetpack-xr-model = { group = "androidx.xr", name = "jetpack-xr-model", version.ref = "xr" }
+
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
