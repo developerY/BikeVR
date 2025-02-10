@@ -5,6 +5,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,14 +57,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.unit.DpVolumeSize
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+
+import androidx.compose.material3.MaterialTheme
+
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 
 
 class MainActivity : ComponentActivity() {
-
     @SuppressLint("RestrictedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge() // Your helper for an immersive UI
+        enableEdgeToEdge() // Your helper for an immersive, edge-to-edge UI
 
         setContent {
             BikeTheme {
@@ -108,24 +120,25 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Main content at the center
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Main content area
                 MainContent(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(48.dp)
                 )
-                // Bike info panel at the bottom
-                BikeInfoPanel(
+                // Flashy bike info panel with extra metrics and animation
+                FlashyBikeInfoPanel(
                     speed = 25.3,
                     distance = 12.8,
                     cadence = 90.0,
-                    heartRate = 135
+                    heartRate = 135,
+                    altitude = 150.5,
+                    calories = 320,
+                    power = 250
                 )
-                // Orbiter for mode switching, if needed
+                // Mode switch control (using Orbiter)
                 Orbiter(
                     position = OrbiterEdge.Top,
                     offset = EdgeOffset.inner(offset = 20.dp),
@@ -156,11 +169,14 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             MainContent(modifier = Modifier.padding(48.dp))
-            BikeInfoPanel(
+            FlashyBikeInfoPanel(
                 speed = 25.3,
                 distance = 12.8,
                 cadence = 90.0,
-                heartRate = 135
+                heartRate = 135,
+                altitude = 150.5,
+                calories = 320,
+                power = 250
             )
             if (LocalHasXrSpatialFeature.current) {
                 FullSpaceModeIconButton(
@@ -182,35 +198,84 @@ fun MainContent(modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * A flashy bike info panel that displays various biking metrics with a pulsing animation.
+ */
 @Composable
-fun BikeInfoPanel(
+fun FlashyBikeInfoPanel(
     speed: Double,
     distance: Double,
     cadence: Double,
-    heartRate: Int
+    heartRate: Int,
+    altitude: Double,
+    calories: Int,
+    power: Int
 ) {
+    // Animate scale for a pulsing effect.
+    val infiniteTransition = rememberInfiniteTransition()
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    // A horizontal gradient brush for a dynamic, flashy background.
+    val gradientBrush = Brush.horizontalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.secondary
+        )
+    )
+
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .background(gradientBrush)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Bike Info",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            // First row of metrics.
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 BikeMetric(name = "Speed", value = "${String.format("%.1f", speed)} km/h")
                 BikeMetric(name = "Distance", value = "${String.format("%.1f", distance)} km")
                 BikeMetric(name = "Cadence", value = "${cadence.toInt()} rpm")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            // Second row of metrics.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
                 BikeMetric(name = "Heart Rate", value = "$heartRate bpm")
+                BikeMetric(name = "Altitude", value = "${String.format("%.1f", altitude)} m")
+                BikeMetric(name = "Calories", value = "$calories cal")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            // Single metric centered.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                BikeMetric(name = "Power", value = "$power W")
             }
         }
     }
