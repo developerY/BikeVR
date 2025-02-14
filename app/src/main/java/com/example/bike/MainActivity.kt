@@ -60,7 +60,7 @@ import androidx.xr.compose.unit.DpVolumeSize
 import com.example.bike.ui.theme.BikeTheme
 
 
-class MainActivityNew : ComponentActivity() {
+class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
