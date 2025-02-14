@@ -53,8 +53,16 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose)
+
+    implementation(libs.filament.android)
+    implementation(libs.gltfio.android)
+    implementation(libs.jetpack.xr.model)
+
+
     implementation(libs.runtime)
     implementation(libs.androidx.scenecore)
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.sceneform.filament.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
