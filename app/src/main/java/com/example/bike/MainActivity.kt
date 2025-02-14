@@ -1,5 +1,6 @@
 package com.example.bike
 
+
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,26 +12,38 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.xr.compose.platform.LocalHasXrSpatialFeature
 import androidx.xr.compose.platform.LocalSession
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.spatial.EdgeOffset
@@ -40,30 +53,11 @@ import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.layout.SpatialRoundedCornerShape
 import androidx.xr.compose.subspace.layout.SubspaceModifier
-import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.movable
 import androidx.xr.compose.subspace.layout.resizable
-import androidx.xr.compose.subspace.layout.width
-import com.example.bike.ui.theme.BikeTheme
-
-
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.unit.DpVolumeSize
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-
-import androidx.compose.material3.MaterialTheme
-
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.graphicsLayer
+import com.example.bike.ui.theme.BikeTheme
 
 
 class MainActivity : ComponentActivity() {
@@ -74,21 +68,37 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BikeTheme {
+                // Background with gradient.
                 Box(modifier = Modifier.fillMaxSize()) {
                     BrushBackground()
+
+                    // Retrieve the current XR session.
                     val session = LocalSession.current
+
+                    // Choose spatial UI if available, otherwise fallback to 2D.
                     if (LocalSpatialCapabilities.current.isSpatialUiEnabled) {
                         Subspace {
-                            MySpatialContent(onRequestHomeSpaceMode = { session?.requestHomeSpaceMode() })
+                            MySpatialContent(
+                                onRequestHomeSpaceMode = { session?.requestHomeSpaceMode() }
+                            )
                         }
                     } else {
-                        My2DContent(onRequestFullSpaceMode = { session?.requestFullSpaceMode() })
+                        My2DContent(
+                            onRequestFullSpaceMode = { session?.requestFullSpaceMode() }
+                        )
                     }
                 }
             }
         }
     }
 }
+
+// Helper: Enable immersive, edge-to-edge UI (stub or implementation)
+fun enableEdgeToEdge() {
+    // Implementation to remove system bars and allow content behind them.
+}
+
+
 
 @Composable
 fun BrushBackground() {
@@ -106,6 +116,9 @@ fun BrushBackground() {
     )
 }
 
+
+
+
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
@@ -121,14 +134,14 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             modifier = Modifier.fillMaxSize()
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Main content area
+                // Main content area.
                 MainContent(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .padding(48.dp)
                 )
-                // Flashy bike info panel with extra metrics and animation
+                // Flashy bike info panel with extra metrics and pulsing animation.
                 FlashyBikeInfoPanel(
                     speed = 25.3,
                     distance = 12.8,
@@ -138,7 +151,7 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                     calories = 320,
                     power = 250
                 )
-                // Mode switch control (using Orbiter)
+                // Overlay a mode switch button via Orbiter.
                 Orbiter(
                     position = OrbiterEdge.Top,
                     offset = EdgeOffset.inner(offset = 20.dp),
@@ -147,13 +160,15 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 ) {
                     HomeSpaceModeIconButton(
                         onClick = onRequestHomeSpaceMode,
-                        modifier = Modifier.size(56.dp)
+                        modifier = Modifier.padding(8.dp)
                     )
                 }
             }
         }
     }
 }
+
+
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -178,7 +193,7 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
                 calories = 320,
                 power = 250
             )
-            if (LocalHasXrSpatialFeature.current) {
+            if (LocalSpatialCapabilities.current.isSpatialUiEnabled) {
                 FullSpaceModeIconButton(
                     onClick = onRequestFullSpaceMode,
                     modifier = Modifier.padding(32.dp)
@@ -187,6 +202,8 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
         }
     }
 }
+
+
 
 @Composable
 fun MainContent(modifier: Modifier = Modifier) {
@@ -198,9 +215,8 @@ fun MainContent(modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * A flashy bike info panel that displays various biking metrics with a pulsing animation.
- */
+
+
 @Composable
 fun FlashyBikeInfoPanel(
     speed: Double,
@@ -211,7 +227,7 @@ fun FlashyBikeInfoPanel(
     calories: Int,
     power: Int
 ) {
-    // Animate scale for a pulsing effect.
+    // Create a pulsing animation.
     val infiniteTransition = rememberInfiniteTransition()
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -222,7 +238,7 @@ fun FlashyBikeInfoPanel(
         )
     )
 
-    // A horizontal gradient brush for a dynamic, flashy background.
+    // Create a dynamic gradient background.
     val gradientBrush = Brush.horizontalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primary,
@@ -270,7 +286,7 @@ fun FlashyBikeInfoPanel(
                 BikeMetric(name = "Calories", value = "$calories cal")
             }
             Spacer(modifier = Modifier.height(12.dp))
-            // Single metric centered.
+            // Single centered metric.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -280,6 +296,8 @@ fun FlashyBikeInfoPanel(
         }
     }
 }
+
+
 
 @Composable
 fun BikeMetric(name: String, value: String) {
@@ -296,6 +314,8 @@ fun BikeMetric(name: String, value: String) {
         )
     }
 }
+
+
 
 @Composable
 fun FullSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -314,6 +334,8 @@ fun FullSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
+
+
 @Composable
 fun HomeSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     FilledTonalIconButton(
@@ -331,7 +353,8 @@ fun HomeSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
-@PreviewLightDark
+
+@Preview(showBackground = true)
 @Composable
 fun My2dContentPreview() {
     BikeTheme {
@@ -347,7 +370,7 @@ fun FullSpaceModeButtonPreview() {
     }
 }
 
-@PreviewLightDark
+@Preview(showBackground = true)
 @Composable
 fun HomeSpaceModeButtonPreview() {
     BikeTheme {
