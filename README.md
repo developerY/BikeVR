@@ -1,5 +1,4 @@
 
-```markdown
 # Android XR Bike App
 
 An immersive Android XR app built using the [Jetpack XR SDK](https://developer.android.com/develop/xr/jetpack-xr-sdk). This sample app demonstrates how to create an edge-to-edge XR experience with both spatial (3D) and 2D fallback modes. It includes features such as:
