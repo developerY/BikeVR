@@ -4,6 +4,7 @@ package com.example.bike
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -35,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +46,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.xr.compose.platform.LocalSession
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.spatial.EdgeOffset
@@ -57,6 +60,7 @@ import androidx.xr.compose.subspace.layout.movable
 import androidx.xr.compose.subspace.layout.resizable
 import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.unit.DpVolumeSize
+import androidx.xr.scenecore.Session
 import com.example.bike.ui.theme.BikeTheme
 
 
@@ -122,46 +126,62 @@ fun BrushBackground() {
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
-    SpatialPanel(
-        modifier = SubspaceModifier
-            .size(DpVolumeSize(width = 1280.dp, height = 800.dp, depth = 7.dp))
-            .resizable()
-            .movable()
-    ) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-            modifier = Modifier.fillMaxSize()
+
+    val activity = LocalActivity.current
+    if (LocalSession.current != null && activity is ComponentActivity) {
+        val uiIsSpatialized = LocalSpatialCapabilities.current.isSpatialUiEnabled
+        val environmentController = remember(activity) {
+            val session = Session.create(activity)
+            EnvironmentController(session, activity.lifecycleScope)
+        }
+
+
+
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .size(DpVolumeSize(width = 1280.dp, height = 800.dp, depth = 7.dp))
+                .resizable()
+                .movable()
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Main content area.
-                MainContent(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                        .padding(48.dp)
-                )
-                // Flashy bike info panel with extra metrics and pulsing animation.
-                FlashyBikeInfoPanel(
-                    speed = 25.3,
-                    distance = 12.8,
-                    cadence = 90.0,
-                    heartRate = 135,
-                    altitude = 150.5,
-                    calories = 320,
-                    power = 250
-                )
-                // Overlay a mode switch button via Orbiter.
-                Orbiter(
-                    position = OrbiterEdge.Top,
-                    offset = EdgeOffset.inner(offset = 20.dp),
-                    alignment = Alignment.End,
-                    shape = SpatialRoundedCornerShape(CornerSize(28.dp))
-                ) {
-                    HomeSpaceModeIconButton(
-                        onClick = onRequestHomeSpaceMode,
-                        modifier = Modifier.padding(8.dp)
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Main content area.
+                    MainContent(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .padding(48.dp)
                     )
+                    // Render a 3D model (explained below)
+                    //if (uiIsSpatialized) {
+                    environmentController.loadModelAsset("hover_bike/scene.gltf", LocalSession.current!!)
+                    //}
+                    // Flashy bike info panel with extra metrics and pulsing animation.
+                    FlashyBikeInfoPanel(
+                        speed = 25.3,
+                        distance = 12.8,
+                        cadence = 90.0,
+                        heartRate = 135,
+                        altitude = 150.5,
+                        calories = 320,
+                        power = 250
+                    )
+                    // Overlay a mode switch button via Orbiter.
+                    Orbiter(
+                        position = OrbiterEdge.Top,
+                        offset = EdgeOffset.inner(offset = 20.dp),
+                        alignment = Alignment.End,
+                        shape = SpatialRoundedCornerShape(CornerSize(28.dp))
+                    ) {
+                        HomeSpaceModeIconButton(
+                            onClick = onRequestHomeSpaceMode,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
                 }
             }
         }
@@ -213,6 +233,7 @@ fun MainContent(modifier: Modifier = Modifier) {
         modifier = modifier,
         color = MaterialTheme.colorScheme.onBackground
     )
+
 }
 
 
