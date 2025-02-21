@@ -63,6 +63,11 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.ui.tooling)
 
+    // Filament dependencies
+    implementation(libs.filament.android)
+    implementation(libs.gltfio.android)
+    implementation(libs.filament.utils)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
