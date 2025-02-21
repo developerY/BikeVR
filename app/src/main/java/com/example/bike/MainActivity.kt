@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +47,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import androidx.xr.compose.platform.LocalSession
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.spatial.EdgeOffset
@@ -60,8 +60,8 @@ import androidx.xr.compose.subspace.layout.movable
 import androidx.xr.compose.subspace.layout.resizable
 import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.unit.DpVolumeSize
-import androidx.xr.scenecore.Session
 import com.example.bike.ui.theme.BikeTheme
+import kotlinx.coroutines.guava.await
 
 
 class MainActivity : ComponentActivity() {
@@ -126,16 +126,22 @@ fun BrushBackground() {
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
-
     val activity = LocalActivity.current
-    if (LocalSession.current != null && activity is ComponentActivity) {
+    val session = LocalSession.current
+
+    // Only proceed if we have a valid XR session and an Activity context.
+    if (session != null && activity is ComponentActivity) {
+        // Check if spatial UI is enabled (e.g., on an XR-capable device).
         val uiIsSpatialized = LocalSpatialCapabilities.current.isSpatialUiEnabled
-        val environmentController = remember(activity) {
-            val session = Session.create(activity)
-            EnvironmentController(session, activity.lifecycleScope)
+
+        // Load the glTF model asynchronously using the official API.
+        // The type is not documented as a specific class, so we use Any? here.
+        val gltfResource by produceState<Any?>(
+            initialValue = null,
+            key1 = session
+        ) {
+            value = session.createGltfResourceAsync("hover_bike/scene.gltf").await()
         }
-
-
 
         SpatialPanel(
             modifier = SubspaceModifier
@@ -149,18 +155,34 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
+
                     // Main content area.
                     MainContent(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .padding(48.dp)
                     )
-                    // Render a 3D model (explained below)
-                    //if (uiIsSpatialized) {
-                    environmentController.loadModelAsset("hover_bike/scene.gltf", LocalSession.current!!)
-                    //}
-                    // Flashy bike info panel with extra metrics and pulsing animation.
+
+                    // Show a placeholder once the model is loaded, or a loading indicator while waiting.
+                    if (gltfResource != null) {
+                        Text(
+                            text = "3D Model Loaded!",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    // Flashy bike info panel with extra metrics.
                     FlashyBikeInfoPanel(
                         speed = 25.3,
                         distance = 12.8,
@@ -170,6 +192,7 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         calories = 320,
                         power = 250
                     )
+
                     // Overlay a mode switch button via Orbiter.
                     Orbiter(
                         position = OrbiterEdge.Top,
