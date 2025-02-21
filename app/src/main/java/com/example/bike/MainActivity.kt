@@ -3,6 +3,7 @@ package com.example.bike
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,6 +66,9 @@ import com.example.bike.ui.theme.BikeTheme
 import kotlinx.coroutines.guava.await
 
 
+private const val TAG = "XRApp"
+
+// Main Activity
 class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,24 +77,25 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             BikeTheme {
-                // Background with gradient.
+                // Full-screen background
                 Box(modifier = Modifier.fillMaxSize()) {
                     BrushBackground()
 
                     // Retrieve the current XR session.
                     val session = LocalSession.current
+                    // Check if device supports spatial UI.
+                    val isSpatialEnabled = LocalSpatialCapabilities.current.isSpatialUiEnabled
 
-                    // Choose spatial UI if available, otherwise fallback to 2D.
-                    if (LocalSpatialCapabilities.current.isSpatialUiEnabled) {
+                    Log.d(TAG, "LocalSession.current = $session, isSpatialUiEnabled = $isSpatialEnabled")
+
+                    if (isSpatialEnabled) {
+                        // Use spatial UI
                         Subspace {
-                            MySpatialContent(
-                                onRequestHomeSpaceMode = { session?.requestHomeSpaceMode() }
-                            )
+                            MySpatialContent(onRequestHomeSpaceMode = { session?.requestHomeSpaceMode() })
                         }
                     } else {
-                        My2DContent(
-                            onRequestFullSpaceMode = { session?.requestFullSpaceMode() }
-                        )
+                        // Fallback 2D content
+                        My2DContent(onRequestFullSpaceMode = { session?.requestFullSpaceMode() })
                     }
                 }
             }
@@ -97,13 +103,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Helper: Enable immersive, edge-to-edge UI (stub or implementation)
+
+// Helper to enable edge-to-edge UI
 fun enableEdgeToEdge() {
-    // Implementation to remove system bars and allow content behind them.
+    // Implementation to remove system bars and allow content behind them, if desired.
 }
 
-
-
+// Simple vertical gradient background
 @Composable
 fun BrushBackground() {
     Box(
@@ -120,27 +126,29 @@ fun BrushBackground() {
     )
 }
 
-
-
-
 @SuppressLint("RestrictedApi")
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val activity = LocalActivity.current
     val session = LocalSession.current
 
-    // Only proceed if we have a valid XR session and an Activity context.
+    // Proceed only if we have a valid XR session & the current activity is a ComponentActivity
     if (session != null && activity is ComponentActivity) {
-        // Check if spatial UI is enabled (e.g., on an XR-capable device).
-        val uiIsSpatialized = LocalSpatialCapabilities.current.isSpatialUiEnabled
-
-        // Load the glTF model asynchronously using the official API.
-        // The type is not documented as a specific class, so we use Any? here.
+        // Load the glTF model asynchronously using the official Jetpack XR SDK API
+        // We'll use a placeholder to show once it's loaded.
         val gltfResource by produceState<Any?>(
             initialValue = null,
             key1 = session
         ) {
-            value = session.createGltfResourceAsync("hover_bike/scene.gltf").await()
+            try {
+                // Attempt to load the model from assets (hover_bike/scene.gltf)
+                // This returns a ListenableFuture, which we await() with kotlinx-coroutines-guava
+                value = session.createGltfResourceAsync("hover_bike/scene.gltf")?.await()
+                Log.d(TAG, "Model loaded successfully!")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load 3D model: ${e.message}")
+                value = null
+            }
         }
 
         SpatialPanel(
@@ -156,7 +164,8 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
 
-                    // Main content area.
+
+                    // Main content area
                     MainContent(
                         modifier = Modifier
                             .weight(1f)
@@ -164,14 +173,16 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                             .padding(48.dp)
                     )
 
-                    // Show a placeholder once the model is loaded, or a loading indicator while waiting.
+                    // Show placeholder or loading indicator for the 3D model
                     if (gltfResource != null) {
                         Text(
                             text = "3D Model Loaded!",
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     } else {
+                        // While loading, show a circular progress indicator
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -182,7 +193,7 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         }
                     }
 
-                    // Flashy bike info panel with extra metrics.
+                    // Flashy bike info panel with extra metrics
                     FlashyBikeInfoPanel(
                         speed = 25.3,
                         distance = 12.8,
@@ -193,7 +204,7 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         power = 250
                     )
 
-                    // Overlay a mode switch button via Orbiter.
+                    // Overlay a mode switch button via Orbiter
                     Orbiter(
                         position = OrbiterEdge.Top,
                         offset = EdgeOffset.inner(offset = 20.dp),
@@ -208,10 +219,11 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 }
             }
         }
+    } else {
+        // If session is null or activity is not a ComponentActivity, do nothing or show fallback
+        Log.w(TAG, "Spatial UI not available: session=$session, activity=$activity")
     }
 }
-
-
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -226,7 +238,11 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+
+            My2DContentWithSpatialButton()
+            Text("Button")
             MainContent(modifier = Modifier.padding(48.dp))
+
             FlashyBikeInfoPanel(
                 speed = 25.3,
                 distance = 12.8,
@@ -236,6 +252,7 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
                 calories = 320,
                 power = 250
             )
+
             if (LocalSpatialCapabilities.current.isSpatialUiEnabled) {
                 FullSpaceModeIconButton(
                     onClick = onRequestFullSpaceMode,
@@ -246,8 +263,6 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
     }
 }
 
-
-
 @Composable
 fun MainContent(modifier: Modifier = Modifier) {
     Text(
@@ -256,11 +271,59 @@ fun MainContent(modifier: Modifier = Modifier) {
         modifier = modifier,
         color = MaterialTheme.colorScheme.onBackground
     )
+}
 
+@SuppressLint("RestrictedApi")
+@Composable
+fun My2DContentWithSpatialButton() {
+    // Get the current XR session, if available.
+    val session = LocalSession.current
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Some placeholder main content.
+            Text(
+                text = "Hello Android XR (2D Mode)",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(48.dp)
+            )
+
+            // Example bike info panel or other UI elements can go here.
+            FlashyBikeInfoPanel(
+                speed = 25.3,
+                distance = 12.8,
+                cadence = 90.0,
+                heartRate = 135,
+                altitude = 150.5,
+                calories = 320,
+                power = 250
+            )
+
+            // This button attempts to request full spatial mode
+            // even if isSpatialUiEnabled is false. If the device doesn't support XR,
+            // this call will likely do nothing, but at least the user can try.
+            Button(
+                onClick = { session?.requestFullSpaceMode() },
+                modifier = Modifier.padding(32.dp)
+            ) {
+                Text(text = "Go Spatial")
+            }
+        }
+    }
 }
 
 
-
+/**
+ * A flashy bike info panel that displays various biking metrics with a pulsing animation.
+ */
 @Composable
 fun FlashyBikeInfoPanel(
     speed: Double,
@@ -341,8 +404,6 @@ fun FlashyBikeInfoPanel(
     }
 }
 
-
-
 @Composable
 fun BikeMetric(name: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -358,8 +419,6 @@ fun BikeMetric(name: String, value: String) {
         )
     }
 }
-
-
 
 @Composable
 fun FullSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -378,8 +437,6 @@ fun FullSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
-
-
 @Composable
 fun HomeSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     FilledTonalIconButton(
@@ -397,7 +454,7 @@ fun HomeSpaceModeIconButton(onClick: () -> Unit, modifier: Modifier = Modifier) 
     }
 }
 
-
+// Previews
 @Preview(showBackground = true)
 @Composable
 fun My2dContentPreview() {
