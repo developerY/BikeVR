@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +38,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,8 +60,10 @@ import androidx.xr.compose.subspace.layout.movable
 import androidx.xr.compose.subspace.layout.resizable
 import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.unit.DpVolumeSize
+import androidx.xr.runtime.math.Pose
+import androidx.xr.runtime.math.Quaternion
+import androidx.xr.runtime.math.Vector3
 import com.example.bike.ui.theme.BikeTheme
-import kotlinx.coroutines.guava.await
 
 
 private const val TAG = "XRApp"
@@ -130,27 +130,10 @@ fun BrushBackground() {
 @Composable
 fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val activity = LocalActivity.current
-    val session = LocalSession.current
+    val xrSession = LocalSession.current
+    if (xrSession != null && activity is ComponentActivity) {
 
-    // Proceed only if we have a valid XR session & the current activity is a ComponentActivity
-    if (session != null && activity is ComponentActivity) {
-        // Load the glTF model asynchronously using the official Jetpack XR SDK API
-        // We'll use a placeholder to show once it's loaded.
-        val gltfResource by produceState<Any?>(
-            initialValue = null,
-            key1 = session
-        ) {
-            try {
-                // Attempt to load the model from assets (hover_bike/scene.gltf)
-                // This returns a ListenableFuture, which we await() with kotlinx-coroutines-guava
-                value = session.createGltfResourceAsync("hover_bike/scene.gltf")?.await()
-                Log.d(TAG, "Model loaded successfully!")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to load 3D model: ${e.message}")
-                value = null
-            }
-        }
-
+        // Create a spatial panel for your XR UI
         SpatialPanel(
             modifier = SubspaceModifier
                 .size(DpVolumeSize(width = 1280.dp, height = 800.dp, depth = 7.dp))
@@ -164,7 +147,6 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
 
-
                     // Main content area
                     MainContent(
                         modifier = Modifier
@@ -173,16 +155,22 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                             .padding(48.dp)
                     )
 
-                    // Show placeholder or loading indicator for the 3D model
-                    if (gltfResource != null) {
-                        Text(
-                            text = "3D Model Loaded!",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    } else {
-                        // While loading, show a circular progress indicator
+                    val pose = Pose(
+                        translation = Vector3(0f, 0f, -2f),
+                        rotation = Quaternion(0f, 0f, 0f, 1f)
+                    )
+
+
+                    // If the entity is created, set a pose/animation, else show a loading indicator
+                    //if (xrSession?.requestHomeSpaceMode().) {
+
+                    ObjectInVolume(true)
+                    Text(
+                        text = "3D Entity Created! Pose & animation set. Done",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    /*} else {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -191,9 +179,9 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         ) {
                             CircularProgressIndicator()
                         }
-                    }
+                    }*/
 
-                    // Flashy bike info panel with extra metrics
+                    // Flashy bike info panel
                     FlashyBikeInfoPanel(
                         speed = 25.3,
                         distance = 12.8,
@@ -204,7 +192,7 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         power = 250
                     )
 
-                    // Overlay a mode switch button via Orbiter
+                    // Mode switch button
                     Orbiter(
                         position = OrbiterEdge.Top,
                         offset = EdgeOffset.inner(offset = 20.dp),
@@ -220,10 +208,11 @@ fun MySpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             }
         }
     } else {
-        // If session is null or activity is not a ComponentActivity, do nothing or show fallback
-        Log.w(TAG, "Spatial UI not available: session=$session, activity=$activity")
+        Log.w("XRApp", "Spatial UI not available: session=$xrSession, activity=$activity")
     }
 }
+
+
 
 @SuppressLint("RestrictedApi")
 @Composable
