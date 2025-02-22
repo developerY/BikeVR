@@ -1,10 +1,11 @@
 package com.example.bike
 
+import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -17,7 +18,9 @@ import androidx.xr.compose.subspace.layout.offset
 import androidx.xr.compose.subspace.layout.scale
 import androidx.xr.runtime.math.Pose
 import androidx.xr.runtime.math.Vector3
+import androidx.xr.scenecore.GltfModelEntity
 import androidx.xr.scenecore.SpatialCapabilities
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 
@@ -26,54 +29,60 @@ import kotlinx.coroutines.launch
 fun ObjectInVolume(show3DObject: Boolean) {
     if (!show3DObject) return
 
-    // A local state for our spin angle (in degrees).
-    var angle by remember { mutableFloatStateOf(360f) }
-
-    // Continuously increment 'angle' to spin the bike.
-    LaunchedEffect(Unit) {
-        while (true) {
-            angle += 1f  // Adjust increment to control spin speed.
-            // ~60 fps
-            kotlinx.coroutines.delay(16L)
-        }
-    }
-
-    // Build a rotation quaternion from 'angle' around the Y-axis
-    val rotation = remember(angle) {
-        axisAngleQuaternion(angle, Vector3(0f, 1f, 0f))
-    }
-
-    // Pose with translation 0.5m forward, using our dynamic rotation
-    val pose = Pose(
-        translation = Vector3(0f, 0f, 0.3f),
-        rotation = rotation
-    )
-
-    // The rest of your existing code
     Text("Model")
-
     val xrCoreSession = checkNotNull(LocalSession.current)
     val scope = rememberCoroutineScope()
 
+    // State for storing the created entity
+    val gltfModelEntityState = remember { mutableStateOf<GltfModelEntity?>(null) }
+
+    // Spin angle in degrees
+    var angle by remember { mutableStateOf(0f) }
+
+    // Continuously update the entity's pose in a LaunchedEffect
+    LaunchedEffect(gltfModelEntityState.value) {
+        val entity = gltfModelEntityState.value ?: return@LaunchedEffect
+        while (true) {
+            angle += 1f
+            val rotation = axisAngleQuaternion(angle, Vector3(0f, 1f, 0f))
+            val newPose = Pose(
+                translation = Vector3(0f, 0f, 0.5f),
+                rotation = rotation
+            )
+            Log.d("XRApp", "Angle = $angle -> setting pose: $newPose")
+            entity.setPose(newPose)
+            delay(16L)
+        }
+    }
+
+    // The Subspace volume
     Subspace {
         Volume(
             modifier = SubspaceModifier
                 .offset(0.dp, 0.dp, 0.dp)
-                .scale(1f)
+                .scale(1f),
         ) {
             scope.launch {
-                // load the 3D model
+                // Load the 3D model
                 val gltfModel = xrCoreSession.createGltfResourceAsync("hover_bike/scene.gltf").await()
-                if (xrCoreSession.getSpatialCapabilities().hasCapability(SpatialCapabilities.SPATIAL_CAPABILITY_3D_CONTENT)) {
+                if (
+                    xrCoreSession.getSpatialCapabilities().hasCapability(
+                        SpatialCapabilities.SPATIAL_CAPABILITY_3D_CONTENT
+                    )
+                ) {
                     val gltfModelEntity = xrCoreSession.createGltfEntity(gltfModel)
+                    // Store the entity in our state so the LaunchedEffect can access it
+                    gltfModelEntityState.value = gltfModelEntity
 
-                    // Apply the dynamic pose (which updates every frame).
-                    gltfModelEntity.setPose(pose)
-                    // Scale down if needed
+                    // Initial pose & scale
+                    gltfModelEntity.setPose(Pose())
                     gltfModelEntity.setScale(0.001f)
 
-                    // Start an animation if you like
-                    gltfModelEntity.startAnimation(loop = true, animationName = "Hovering")
+                    // Start an animation if available
+                    gltfModelEntity.startAnimation(
+                        loop = true,
+                        animationName = "Hovering",
+                    )
                 }
             }
         }
