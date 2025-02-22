@@ -1,89 +1,51 @@
 package com.example.bike
 
-import android.util.Log
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.dp
 import androidx.xr.compose.platform.LocalSession
-import androidx.xr.compose.spatial.Subspace
-import androidx.xr.compose.subspace.Volume
-import androidx.xr.compose.subspace.layout.SubspaceModifier
-import androidx.xr.compose.subspace.layout.offset
-import androidx.xr.compose.subspace.layout.scale
 import androidx.xr.runtime.math.Pose
 import androidx.xr.runtime.math.Vector3
-import androidx.xr.scenecore.GltfModelEntity
 import androidx.xr.scenecore.SpatialCapabilities
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
-import kotlinx.coroutines.launch
 
 
 @Composable
 fun ObjectInVolume(show3DObject: Boolean) {
     if (!show3DObject) return
 
-    Text("Model")
     val xrCoreSession = checkNotNull(LocalSession.current)
-    val scope = rememberCoroutineScope()
 
-    // State for storing the created entity
-    val gltfModelEntityState = remember { mutableStateOf<GltfModelEntity?>(null) }
-
-    // Spin angle in degrees
+    // Keep track of the spin angle in a remember'd state.
     var angle by remember { mutableStateOf(0f) }
 
-    // Continuously update the entity's pose in a LaunchedEffect
-    LaunchedEffect(gltfModelEntityState.value) {
-        val entity = gltfModelEntityState.value ?: return@LaunchedEffect
-        while (true) {
-            angle += 1f
-            val rotation = axisAngleQuaternion(angle, Vector3(0f, 1f, 0f))
-            val newPose = Pose(
-                translation = Vector3(0f, 0f, 0.5f),
-                rotation = rotation
-            )
-            Log.d("XRApp", "Angle = $angle -> setting pose: $newPose")
-            entity.setPose(newPose)
-            delay(16L)
-        }
-    }
+    LaunchedEffect(Unit) {
+        // 1. Load the model asynchronously
+        val gltfModel = xrCoreSession.createGltfResourceAsync("hover_bike/scene.gltf").await()
 
-    // The Subspace volume
-    Subspace {
-        Volume(
-            modifier = SubspaceModifier
-                .offset(0.dp, 0.dp, 0.dp)
-                .scale(1f),
-        ) {
-            scope.launch {
-                // Load the 3D model
-                val gltfModel = xrCoreSession.createGltfResourceAsync("hover_bike/scene.gltf").await()
-                if (
-                    xrCoreSession.getSpatialCapabilities().hasCapability(
-                        SpatialCapabilities.SPATIAL_CAPABILITY_3D_CONTENT
-                    )
-                ) {
-                    val gltfModelEntity = xrCoreSession.createGltfEntity(gltfModel)
-                    // Store the entity in our state so the LaunchedEffect can access it
-                    gltfModelEntityState.value = gltfModelEntity
+        // 2. Check if 3D content is supported
+        if (xrCoreSession.getSpatialCapabilities().hasCapability(SpatialCapabilities.SPATIAL_CAPABILITY_3D_CONTENT)) {
+            // 3. Create the glTF entity
+            val entity = xrCoreSession.createGltfEntity(gltfModel)
 
-                    // Initial pose & scale
-                    gltfModelEntity.setPose(Pose())
-                    gltfModelEntity.setScale(0.001f)
+            // Scale the entity down, start an animation if available
+            entity.setScale(0.001f)
+            entity.startAnimation(loop = true, animationName = "Hovering")
 
-                    // Start an animation if available
-                    gltfModelEntity.startAnimation(
-                        loop = true,
-                        animationName = "Hovering",
-                    )
-                }
+            // 4. Continuously update the rotation in a ~60 FPS loop
+            while (true) {
+                angle += 1f
+                val rotation = axisAngleQuaternion(angle, Vector3(0f, 1f, 0f))
+                val pose = Pose(
+                    translation = Vector3(0f, 0f, 0.5f),  // 0.5m in front
+                    rotation = rotation
+                )
+                entity.setPose(pose)
+                delay(16L) // ~60 FPS
             }
         }
     }
